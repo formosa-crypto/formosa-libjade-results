@@ -147,6 +147,28 @@ summary { cursor: pointer; color: var(--text-secondary); font-size: 12.5px; }
 .d.worse { color: var(--worse); }
 .d.same { color: var(--muted); }
 
+/* checks: history (one row per commit) and failure logs */
+.ckhist { width: auto; }
+.ckhist th, .ckhist td { padding: 3px 6px 3px 0; }
+.ckhist thead th { vertical-align: bottom; }
+.ckhist th.grp { text-align: center; color: var(--text-secondary); font-weight: 600; border-bottom: 0; padding-bottom: 0; }
+.ckhist th.set { font-size: 11px; font-weight: 400; padding: 4px 2px; vertical-align: bottom; text-align: center; }
+.ckhist th.set .v { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; display: inline-block; }
+.ckhist td.c { text-align: center; padding: 3px 2px; min-width: 16px; }
+.ckhist .gs { border-left: 1px solid var(--hairline); padding-left: 6px; }
+.ckhist .fs { padding-left: 8px; }
+.ckhist td.subj { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ckhist tbody tr { cursor: pointer; }
+.ckhist tbody tr:hover td { background: var(--wash); }
+.ckhist tbody tr.cur td { background: var(--wash); }
+.ckhist tbody tr.cur td:first-child a { font-weight: 600; }
+.ckhist .st { font-size: 12px; line-height: 1; }
+.ckhist .st.ok { color: var(--better); }
+.ckhist .st.ko { color: var(--worse); font-weight: 700; }
+.ckhist .st.none { color: var(--muted); }
+pre.log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--wash);
+          border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 6px 0 0; }
+
 /* stat tiles */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .tile { border: 1px solid var(--ring); border-radius: 8px; padding: 10px 12px; }

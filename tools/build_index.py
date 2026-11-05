@@ -5,8 +5,11 @@ Input (written by jasmin-nist's CI, never edited):
 
     data/proofs/<commit>.json                     proofs timing, main
     data/bench/<runner>/<commit>.json             cycle benchmarks, main
+    data/checks/<commit>.json                     checks (KAT, memcheck, CT,
+                                                  SCT, extraction), main
     data/pr/<number>/bench/<runner>/<commit>.json cycle benchmarks of a PR run
     data/pr/<number>/proofs/<commit>.json         proofs timing of a PR run
+    data/pr/<number>/checks/<commit>.json         checks of a PR run
 
 Output (into OUT_DIR, rebuilt on every deploy):
 
@@ -19,8 +22,10 @@ Output (into OUT_DIR, rebuilt on every deploy):
                              directory), column-wise, for the Trends tab
     series/bench-<r>.json    median and quartiles per measurement and commit,
                              column-wise, for the Trends tab
-    pr/<number>.json         one PR's runs (per head commit: bench and/or
-                             proofs), with their merge base
+    series/checks.json       outcome (1 passed, 0 failed) per check, target
+                             and commit, column-wise, for the Checks tab
+    pr/<number>.json         one PR's runs (per head commit: bench, proofs
+                             and/or checks), with their merge base
 
 The dashboard fetches index.json first, a series file only on the Trends
 tab, and a full result file only for the commits or PR runs it shows.
@@ -62,11 +67,25 @@ def bench_m(d):
             for r in d.get("results", [])}
 
 
+def checks_summary(d):
+    """a checks record -> its outcome, its counts per check, its run"""
+    meta, by = d.get("meta", {}), {}
+    for r in d.get("results", []):
+        n = by.setdefault(r["check"], [0, 0])
+        n[0] += bool(r.get("ok"))
+        n[1] += 1
+    s = {k: meta[k] for k in ("ok", "jobs", "date", "run_id", "run_url") if k in meta}
+    s["passed"] = sum(n[0] for n in by.values())
+    s["total"] = sum(n[1] for n in by.values())
+    s["by_check"] = by
+    return s
+
+
 def main():
     data = Path(sys.argv[1] if len(sys.argv) > 1 else "data")
     out = Path(sys.argv[2] if len(sys.argv) > 2 else ".")
 
-    commits, proofs_groups, bench_series = {}, {}, {}
+    commits, proofs_groups, bench_series, checks_series = {}, {}, {}, {}
 
     def entry(sha, meta):
         c = commits.setdefault(sha, {"commit": sha})
@@ -104,6 +123,14 @@ def main():
             if k in meta}
         bench_series.setdefault(runner, {})[f.stem] = bench_m(d)
 
+    for f in sorted((data / "checks").glob("*.json")):
+        d = load(f)
+        if d is None:
+            continue
+        entry(f.stem, d.get("meta", {}))["checks"] = checks_summary(d)
+        checks_series[f.stem] = {f'{r["check"]}|{r["target"]}': int(bool(r.get("ok")))
+                                 for r in d.get("results", [])}
+
     # by commit date; a merged stack's commits share theirs, and those copied
     # from PR runs record their parent: within a date, parents first, and a
     # record without a parent (a push's head, measured on main) last
@@ -135,6 +162,13 @@ def main():
             "commits": cs,
             "m": {k: [per[s].get(k) for s in cs] for k in keys},
         })
+
+    cs = [s for s in shas if s in checks_series]
+    keys = sorted({k for m in checks_series.values() for k in m})
+    dump(out / "series" / "checks.json", {
+        "commits": cs,
+        "r": {k: [checks_series[s].get(k) for s in cs] for k in keys},
+    })
 
     # PRs: one manifest each (runs grouped per head commit), and a summary
     # in the index
@@ -172,6 +206,11 @@ def main():
             run(f.stem, meta)["proofs"] = {
                 k: meta[k] for k in ("total_seconds", "files", "machine", "tools", "date", "run_id")
                 if k in meta}
+        for f in sorted(pdir.glob("checks/*.json")):
+            d = load(f)
+            if d is None:
+                continue
+            run(f.stem, d.get("meta", {}))["checks"] = checks_summary(d)
         if not runs:
             continue
         ordered_runs = sorted(runs.values(), key=lambda r: (instant(r.get("date")), r["commit"]))

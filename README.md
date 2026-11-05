@@ -1,6 +1,6 @@
 # jasmin-nist results
 
-Proof-checking timings and cycle benchmarks of
+Proof-checking timings, cycle benchmarks and checks of
 [jasmin-nist](https://github.com/strub/jasmin-nist), one record per commit on
 its `main` branch, published at https://www.strub.nu/jasmin-nist-timing/.
 
@@ -8,9 +8,12 @@ its `main` branch, published at https://www.strub.nu/jasmin-nist-timing/.
   the machine and tool versions of the run (main).
 - `data/bench/<runner>/<commit>.json`: median cycles per scheme, backend and
   operation over several passes, with their spread and the environment (main).
-- `data/pr/<number>/bench/<runner>/<commit>.json`: the same for a bench run of
-  a labelled pull request, with the PR's merge base; kept apart from main's
-  history (delete a PR's folder to prune it).
+- `data/checks/<commit>.json`: the checks of the commit (KATs, Valgrind's
+  memcheck, CT and SCT per parameter set, extraction of the EasyCrypt models),
+  one result per check and target, with the tool versions (main).
+- `data/pr/<number>/{bench/<runner>,proofs,checks}/<commit>.json`: the same
+  for the runs of a pull request, with the PR's merge base; kept apart from
+  main's history (delete a PR's folder to prune it).
 - `site/`: the dashboard. `tools/build_index.py` generates, at deploy time,
   a light `index.json` (main commits and their run metadata, PRs), the
   Trends data (`series/`) and one manifest per PR (`pr/<number>.json`).

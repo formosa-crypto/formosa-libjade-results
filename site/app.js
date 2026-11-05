@@ -7,8 +7,9 @@
 //   #/compare/<a>..<b>       b against a           (?zoom=dir/sub)
 //   #/compare/<b>            b against the commit recorded just before it
 //                            (for a PR run, against its merge base on main)
-//   #/prs                    pull requests with recorded benchmarks
-//   #/pr/<number>            a PR run (bench, proofs) against its merge base (?run=<sha>)
+//   #/checks  or  #/checks/<sha>  one commit's checks (latest by default), and their history
+//   #/prs                    pull requests with recorded results
+//   #/pr/<number>            a PR run (checks; bench, proofs against its merge base) (?run=<sha>)
 // (#/commit/<sha> is kept as an alias of #/results/<sha>.)
 // Commit ids may be abbreviated. In compare links, a PR run is written
 // pr<number>:<sha>, or pr<number> for the PR's latest run.
@@ -70,7 +71,14 @@ const isRun = c => c.pr != null;
 const benchOf = (c, runner) => isRun(c) ? prBenchFile(c.pr, runner, c.commit) : benchFile(runner, c.commit);
 const proofsOf = c => isRun(c) ? prProofsFile(c.pr, c.commit) : proofsFile(c.commit);
 const ref = c => isRun(c) ? `pr${c.pr}:${c.commit}` : c.commit;
+// GitHub deletes a run's logs after LOG_DAYS (the repo's retention): link a
+// run only while it has them. The records keep what the pages show.
+const LOG_DAYS = 90;
+const runAlive = date => !!date && Date.now() - Date.parse(date) < LOG_DAYS * 864e5;
+const checksFile = sha => fetchJSON(`data/checks/${sha}.json`);
+const prChecksFile = (n, sha) => fetchJSON(`data/pr/${n}/checks/${sha}.json`);
 const proofsSeries = () => fetchJSON("series/proofs.json");
+const checksSeries = () => fetchJSON("series/checks.json");
 const benchSeries = runner => fetchJSON(`series/bench-${runner}.json`);
 // a bench result file -> { "scheme|backend|operation": [median, p25, p75] }
 const toM = d => Object.fromEntries((d.results || []).map(r =>
@@ -116,7 +124,8 @@ const when = c => isRun(c) ? c.date : c.commit_date;
 const tag = c => isRun(c) ? `#${c.pr} ${short(c.commit)}` : short(c.commit);
 const label = c => `${tag(c)} · ${day(when(c))} · ${c.subject || ""}`;
 // the kinds of results an entry has, for the pickers
-const kinds = c => [Object.keys(c.bench || {}).length ? "bench" : null, c.proofs ? "proofs" : null]
+const kinds = c => [Object.keys(c.bench || {}).length ? "bench" : null, c.proofs ? "proofs" : null,
+                    c.checks ? "checks" : null]
   .filter(Boolean).join(" + ");
 // a main record copied from the run of the merged PR (same tree)
 const fromPr = r => r?.from_pr ? ` (PR #${r.from_pr.number} run, ${short(r.from_pr.commit)})` : "";
@@ -392,7 +401,8 @@ async function commitView(c, params) {
   head.append(el("h2", { text: c.subject || short(c.commit) }),
     el("p", { class: "sub" }, el("span", { class: "mono", text: c.commit }), ` · ${day(c.commit_date)} · `,
        el("a", { href: `${REPO}/commit/${c.commit}`, text: "commit" }),
-       c.proofs?.run_id ? " · " : null, c.proofs?.run_id ? el("a", { href: `${REPO}/actions/runs/${c.proofs.run_id}`, text: "proofs run" + fromPr(c.proofs) }) : null));
+       c.proofs?.run_id && runAlive(c.proofs.date) ? " · " : null,
+       c.proofs?.run_id && runAlive(c.proofs.date) ? el("a", { href: `${REPO}/actions/runs/${c.proofs.run_id}`, text: "proofs run" + fromPr(c.proofs) }) : null));
   const bar = el("div", { class: "row" });
   const cp = commitPicker(c, x => go(`#/results/${x.commit}`), "commit");
   cp.style.flex = "1 1 320px";
@@ -407,6 +417,9 @@ async function commitView(c, params) {
   const missing = (title, what) => view.append(el("div", { class: "card" }, el("h2", { text: title }),
     el("div", { class: "empty", text: `No ${what} recorded for this commit: its CI run may still be in ` +
       "progress, may have failed, or did not run for this commit." })));
+  if (!c.checks) missing("Checks", "checks");
+  else view.append(el("div", { class: "card" }, el("h2", { text: "Checks" }),
+    el("p", { class: "sub", style: "margin:0" }, checksLine(c.checks), " · ", el("a", { href: `#/checks/${c.commit}`, text: "details" }))));
   for (const runner of INDEX.bench_runners) {
     const b = c.bench?.[runner];
     if (!b) { missing(`Benchmarks · ${runner}`, "benchmarks"); continue; }
@@ -685,15 +698,182 @@ async function compareView(a, b, params) {
   }
 }
 
+// ---------------------------------------------------------------- checks
+// The checks records (KAT, memcheck, CT, SCT, extraction): one per main
+// commit (data/checks) and per PR run (data/pr/<n>/checks). The matrix
+// crosses the parameter sets with the checks of an implementation; every
+// other check (extraction, build) is listed under it.
+const CHECK_COLS = [["kat", "KAT"], ["memcheck", "Memcheck"], ["ct", "CT"], ["sct", "SCT"]];
+const CHECK_ORDER = ["kat", "memcheck", "ct", "sct", "extraction", "build"];
+const CHECK_TITLE = { ...Object.fromEntries(CHECK_COLS), extraction: "Extraction", build: "Build" };
+// the checks each job of the checks workflow records
+const JOB_CHECKS = { "ct": ["ct", "sct"], "extraction": ["extraction"], "kat-memcheck": ["build", "kat", "memcheck"] };
+const HISTORY = 30;
+// "mlkem512" -> "ML-KEM-512"; a target's parameter set ("mldsa65-acvp" -> "mldsa65")
+const setName = t => t.replace(/^ml(kem|dsa)(\d+)$/, (_, f, n) => `ML-${f.toUpperCase()}-${n}`);
+const setOf = t => (/^(ml(?:kem|dsa)\d+)(?:-.*)?$/.exec(t) || [])[1];
+const bySet = (a, b) => bySchemeOrder(setName(a), setName(b));
+const byCheck = (a, b) => ((CHECK_ORDER.indexOf(a) + 1) || 99) - ((CHECK_ORDER.indexOf(b) + 1) || 99) || a.localeCompare(b);
+const passedN = r => +((/(\d+) passed/.exec(r.summary || "") || [])[1] || 0);
+const okMark = ok => el("span", { class: `d ${ok ? "better" : "worse"}`, text: ok ? "✓ passed" : "✗ failed" });
+// an entry's summary (from index.json): "✓ 31 of 31 checks passed"
+const checksLine = s => el("span", {}, okMark(s.ok), ` · ${s.passed} of ${s.total} checks passed`);
+
+// one record: the matrix, the other checks, the failures with the end of
+// their output, the jobs that did not succeed and the tool versions
+function checksDetail(d) {
+  const wrap = el("div");
+  const res = d.results || [];
+  const inMatrix = r => CHECK_COLS.some(([k]) => k === r.check) && setOf(r.target);
+  // a job that did not succeed although none of its recorded checks failed
+  // stopped for another reason (toolchain, runner): its results are incomplete
+  const stopped = Object.entries(d.meta?.jobs || {}).filter(([job, v]) => v !== "success" &&
+    !res.some(r => !r.ok && (JOB_CHECKS[job] || []).includes(r.check)));
+  for (const [job, v] of stopped) {
+    const log = d.meta?.job_logs?.[job];
+    wrap.append(el("div", { class: "notice" },
+      `The ${job} job ended with "${v}" before any of its checks failed: its results below are incomplete.`,
+      log?.length ? el("pre", { class: "log", text: log.join("\n") }) : null));
+  }
+  const sets = [...new Set(res.filter(inMatrix).map(r => setOf(r.target)))].sort(bySet);
+  if (sets.length) {
+    const tb = el("tbody");
+    for (const s of sets) tb.append(el("tr", {}, el("td", { text: setName(s) }), ...CHECK_COLS.map(([k]) => {
+      const rs = res.filter(r => r.check === k && setOf(r.target) === s);
+      if (!rs.length) return el("td", { class: "muted", text: "—" });
+      const td = el("td", {}, okMark(rs.every(r => r.ok)));
+      const n = rs.reduce((a, r) => a + passedN(r), 0);
+      if (n) td.append(el("span", { class: "muted", text: ` · ${n} tests` }));
+      td.title = rs.map(r => `${r.target}: ${r.ok ? "passed" : "failed"}` +
+        `${r.summary ? ` (${r.summary})` : ""}, ${dur(r.seconds || 0)}`).join("\n");
+      return td;
+    })));
+    wrap.append(el("div", { class: "tw" }, el("table", {}, el("thead", {}, el("tr", {},
+      el("th", { text: "parameter set" }), ...CHECK_COLS.map(([, h]) => el("th", { text: h })))), tb)));
+  }
+  const other = res.filter(r => !inMatrix(r)).sort((a, b) => byCheck(a.check, b.check));
+  if (other.length) {
+    const tb = el("tbody");
+    for (const r of other) tb.append(el("tr", {}, el("td", { text: r.check }), el("td", { class: "mono", text: r.target }),
+      el("td", {}, okMark(r.ok)), el("td", { class: "num", text: dur(r.seconds || 0) }),
+      el("td", { class: "muted", text: r.summary || "" })));
+    wrap.append(el("h3", { text: "Other checks" }), el("div", { class: "tw" }, el("table", {}, el("thead", {}, el("tr", {},
+      el("th", { text: "check" }), el("th", { text: "target" }), el("th", { text: "result" }),
+      el("th", { class: "num", text: "time" }), el("th", { text: "summary" }))), tb)));
+  }
+  const failed = res.filter(r => !r.ok);
+  if (failed.length) {
+    wrap.append(el("h3", { text: `Failures (${failed.length})` }));
+    for (const r of failed) wrap.append(el("details", { open: "" }, el("summary", { text: `${r.check} · ${r.target}` }),
+      el("pre", { class: "log", text: (r.tail || []).join("\n") || "(no output recorded)" })));
+  }
+  const tools = Object.entries(d.meta?.tools || {});
+  if (tools.length) wrap.append(el("h3", { text: "Tools" }), el("div", { class: "tw" }, el("table", {}, el("tbody", {},
+    ...tools.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { class: "mono", text: v })))))));
+  return wrap;
+}
+
+// The last HISTORY main commits that have a record, newest first: one row
+// per commit, one column per check and parameter set (the KAT files of a
+// set make one cell), then the other checks by target. A row opens its
+// commit.
+async function checksHistory(cur) {
+  const card = el("div", { class: "card" }, el("h2", { text: "History" }),
+    el("p", { class: "sub", text: `The last ${HISTORY} commits of main that have checks, newest first. ` +
+      "● passed, ✗ failed, ○ not run; hover a cell for the check, click a row to show the commit." }));
+  let s;
+  try { s = await checksSeries(); }
+  catch (e) { card.append(el("div", { class: "empty", text: String(e) })); return card; }
+  const keys = Object.keys(s.r).map(k => k.split("|"));
+  // the columns: per check, its parameter sets (matrix checks) or targets
+  const groups = [...new Set(keys.map(([c]) => c))].sort(byCheck).map(check => {
+    const matrix = CHECK_COLS.some(([k]) => k === check);
+    const ts = keys.filter(([c]) => c === check).map(([, t]) => t);
+    const cols = matrix ? [...new Set(ts.map(setOf).filter(Boolean))].sort(bySet)
+                        : [...new Set(ts)].sort();
+    return { check, title: CHECK_TITLE[check] || check, matrix, cols };
+  });
+  const colLabel = (g, t) => g.matrix ? setName(t) : t;
+  // one cell: every key of the column, at commit index j
+  const cell = (g, t, j) => {
+    const ks = keys.filter(([c, x]) => c === g.check && (g.matrix ? setOf(x) === t : x === t));
+    const vs = ks.map(([c, x]) => s.r[`${c}|${x}`][j]).filter(v => v != null);
+    return !vs.length ? null : vs.every(Boolean);
+  };
+  const thead = el("thead", {},
+    el("tr", {}, el("th", { colspan: "3" }), ...groups.map(g =>
+      el("th", { class: "grp gs", colspan: String(g.cols.length), text: g.title }))),
+    el("tr", {}, el("th", { text: "commit" }), el("th", { text: "date" }), el("th", { text: "subject" }),
+      ...groups.flatMap(g => g.cols.map((t, i) => el("th", {
+        class: "set" + (i === 0 ? " gs" : "") + (g.matrix && i && setOf(t)?.slice(0, 5) !== g.cols[i - 1].slice(0, 5) ? " fs" : ""),
+        title: colLabel(g, t) }, el("span", { class: "v", text: colLabel(g, t) }))))));
+  const tb = el("tbody");
+  const n = s.commits.length;
+  for (let j = n - 1; j >= Math.max(0, n - HISTORY); j--) {
+    const sha = s.commits[j], c = COMMITS[POS.get(sha)] || { commit: sha };
+    const tr = el("tr", { class: sha === cur.commit ? "cur" : "" },
+      el("td", {}, el("a", { href: `#/checks/${sha}`, class: "mono", text: short(sha) })),
+      el("td", { class: "muted", text: day(c.commit_date) }),
+      el("td", { class: "subj", title: c.subject || "", text: c.subject || "" }),
+      ...groups.flatMap(g => g.cols.map((t, i) => {
+        const v = cell(g, t, j);
+        const what = v == null ? "not run" : v ? "passed" : "failed";
+        const fam = g.matrix && i && setOf(t)?.slice(0, 5) !== g.cols[i - 1].slice(0, 5);
+        return el("td", { class: "c" + (i === 0 ? " gs" : "") + (fam ? " fs" : ""),
+                          title: `${g.title} ${g.matrix ? setName(t) : t}: ${what}` },
+          el("span", { class: v == null ? "st none" : v ? "st ok" : "st ko", text: v == null ? "○" : v ? "●" : "✗" }));
+      })));
+    tr.addEventListener("click", ev => { if (!ev.target.closest("a")) go(`#/checks/${sha}`); });
+    tb.append(tr);
+  }
+  card.append(el("div", { class: "tw" }, el("table", { class: "ckhist" }, thead, tb)));
+  return card;
+}
+
+async function checksView(c) {
+  nav("checks");
+  view.replaceChildren();
+  const all = COMMITS.filter(x => x.checks);
+  const head = el("div", { class: "card" });
+  view.append(head);
+  head.append(el("h2", { text: "Checks" }),
+    el("p", { class: "sub", text: "Known-answer tests, Valgrind's memcheck, constant time (CT) and speculative constant " +
+      "time (SCT) of every parameter set, and the extraction of the EasyCrypt models: the checks workflow of each commit." }));
+  if (!all.length) { head.append(el("div", { class: "empty", text: "No checks recorded yet: they appear after the next checks run on main." })); return; }
+  const bar = el("div", { class: "row" });
+  const cp = commitPicker(c, x => go(`#/checks/${x.commit}`), "commit", all);
+  cp.style.flex = "1 1 320px";
+  const i = all.indexOf(c), p = i > 0 ? all[i - 1] : null, n = i >= 0 ? all[i + 1] : null;
+  const bp = el("button", { text: "◀ older" }); bp.disabled = !p; bp.addEventListener("click", () => go(`#/checks/${p.commit}`));
+  const bn = el("button", { text: "newer ▶" }); bn.disabled = !n; bn.addEventListener("click", () => go(`#/checks/${n.commit}`));
+  bar.append(cp, bp, bn);
+  head.append(bar);
+  const card = el("div", { class: "card" });
+  view.append(card);
+  card.append(el("h2", { text: c.subject || short(c.commit) }),
+    el("p", { class: "sub" }, el("span", { class: "mono", text: c.commit }), ` · ${day(c.commit_date)} · `,
+      el("a", { href: `#/results/${c.commit}`, text: "results" }), " · ", el("a", { href: `${REPO}/commit/${c.commit}`, text: "commit" }),
+      c.checks?.run_url && runAlive(c.checks.date) ? " · " : null,
+      c.checks?.run_url && runAlive(c.checks.date) ? el("a", { href: c.checks.run_url, text: "checks run" }) : null));
+  if (!c.checks) card.append(el("div", { class: "empty", text: "No checks recorded for this commit: its checks run may " +
+    "still be in progress, or did not run for this commit." }));
+  else {
+    card.append(el("p", { class: "sub" }, checksLine(c.checks)));
+    try { card.append(checksDetail(await checksFile(c.commit))); }
+    catch (e) { card.append(el("div", { class: "empty", text: String(e) })); }
+  }
+  view.append(await checksHistory(c));
+}
+
 // ---------------------------------------------------------------- PRs
 function prsView() {
   nav("prs");
   const prs = INDEX.prs || [];
   const card = el("div", { class: "card" }, el("h2", { text: "Pull requests" }),
-    el("p", { class: "sub", text: "Proof timings and benchmarks of pull requests (benchmarks on PRs labelled bench), " +
+    el("p", { class: "sub", text: "Checks, proof timings and benchmarks of pull requests, " +
       "each run compared with the PR's merge base on main. PR records are kept apart from main's history." }));
   view.replaceChildren(card);
-  if (!prs.length) { card.append(el("div", { class: "empty", text: "No pull request benchmarks recorded yet." })); return; }
+  if (!prs.length) { card.append(el("div", { class: "empty", text: "No pull request results recorded yet." })); return; }
   const tb = el("tbody");
   for (const p of prs)
     tb.append(el("tr", {}, el("td", {}, el("a", { href: `#/pr/${p.number}`, text: `#${p.number}` })),
@@ -732,13 +912,24 @@ async function prView(number, params) {
   }
 
   const baseFor = has => baseOf(run, has);
-  const sides = (base, runId) => el("p", { class: "sub" },
+  const sides = (base, runId, date) => el("p", { class: "sub" },
     "A = ", !base ? "—" : isRun(base)
       ? el("a", { href: `#/pr/${base.pr}?run=${base.commit}`, class: "mono", text: tag(base) })
       : el("a", { href: `#/results/${base.commit}`, class: "mono", text: short(base.commit) }),
     base && isRun(base) ? " (PR run) · B = " : " (main) · B = ", el("span", { class: "mono", text: short(run.commit) }), ` (PR run, ${day(run.date)})`,
-    runId ? " · " : null, runId ? el("a", { href: `${REPO}/actions/runs/${runId}`, text: "CI run" }) : null,
+    runId && runAlive(date) ? " · " : null, runId && runAlive(date) ? el("a", { href: `${REPO}/actions/runs/${runId}`, text: "CI run" }) : null,
     base ? " · " : null, base ? el("a", { href: `${REPO}/compare/${base.commit}...${run.commit}`, text: "code diff" }) : null);
+  const ck = el("div", { class: "card" }, el("h2", { text: "Checks" }));
+  view.append(ck);
+  if (!run.checks) ck.append(el("div", { class: "empty", text: "No checks for this run (published once its checks run completes)." }));
+  else {
+    ck.append(el("p", { class: "sub" }, checksLine(run.checks),
+      run.checks.run_url && runAlive(run.checks.date) ? " · " : null,
+      run.checks.run_url && runAlive(run.checks.date) ? el("a", { href: run.checks.run_url, text: "checks run" }) : null));
+    try { ck.append(checksDetail(await prChecksFile(pr.number, run.commit))); }
+    catch (e) { ck.append(el("div", { class: "empty", text: String(e) })); }
+  }
+
   const approxNote = (base, what) => el("div", { class: "notice", text: `The merge base ${short(run.merge_base || "?")} has no recorded ` +
     `${what}, on main or as a PR run; compared with ${short(base.commit)}, the closest earlier main commit that has one.` });
 
@@ -746,9 +937,9 @@ async function prView(number, params) {
     const card = el("div", { class: "card" }, el("h2", { text: `Benchmarks · ${runner}` }));
     view.append(card);
     const rb = run.bench?.[runner];
-    if (!rb) { card.append(el("div", { class: "empty", text: "No benchmark for this run (benchmarks run on PRs labelled bench)." })); continue; }
+    if (!rb) { card.append(el("div", { class: "empty", text: "No benchmark for this run (published once its bench run succeeds)." })); continue; }
     const { base, approx } = baseFor(c => c.bench?.[runner]);
-    card.append(sides(base, rb.run_id));
+    card.append(sides(base, rb.run_id, rb.date));
     if (!base) { card.append(el("div", { class: "empty", text: "No main commit with a recorded benchmark to compare with." })); continue; }
     if (approx) card.append(approxNote(base, "benchmark"));
     const n = envNotice(envDiff(benchEnv(base, runner), { ...rb.env, reps: rb.reps, iters: rb.iters }), "Bench");
@@ -765,7 +956,7 @@ async function prView(number, params) {
   view.append(card);
   if (!run.proofs) { card.append(el("div", { class: "empty", text: "No proof timings for this run (published once its proofs run succeeds)." })); return; }
   const { base, approx } = baseFor(c => c.proofs);
-  card.append(sides(base, run.proofs.run_id));
+  card.append(sides(base, run.proofs.run_id, run.proofs.date));
   if (!base) { card.append(el("div", { class: "empty", text: "No main commit with recorded proof timings to compare with." })); return; }
   if (approx) card.append(approxNote(base, "proof timings"));
   const n = envNotice(envDiff(proofsEnv(base), proofsEnv({ proofs: run.proofs })), "Proofs");
@@ -792,6 +983,11 @@ function route() {
     if (c) return commitView(c, params);
   } else if (v === "trends") {
     return timeline(params);
+  } else if (v === "checks") {
+    if (!COMMITS.length) return emptyView("checks");
+    const all = COMMITS.filter(x => x.checks);
+    const c = arg ? resolve(arg) : all[all.length - 1] || COMMITS[COMMITS.length - 1];
+    if (c) return checksView(c);
   } else if (v === "prs") {
     return prsView();
   } else if (v === "pr" && /^\d+$/.test(arg || "")) {
