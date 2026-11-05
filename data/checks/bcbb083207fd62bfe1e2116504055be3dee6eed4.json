@@ -1,0 +1,231 @@
+{
+ "meta": {
+  "repo": "strub/jasmin-nist",
+  "branch": "main",
+  "event": "push",
+  "commit": "bcbb083207fd62bfe1e2116504055be3dee6eed4",
+  "commit_date": "2026-11-05T13:20:22+01:00",
+  "subject": "ci: check the KATs, memcheck, the extracted models and the proofs of every PR",
+  "run_id": 42031817356,
+  "run_url": "https://github.com/strub/jasmin-nist/actions/runs/42031817356",
+  "date": "2026-11-05T13:01:42+00:00",
+  "tools": {
+   "jasmin": "Jasmin Compiler 2026.03.1",
+   "jasmin2ec": "Jasmin Compiler 2026.03.1",
+   "jasmin2ec-safety": "Jasmin Compiler development version at commit 1e7479a2d8e874ca48695ffecd3452a603b425ff on branch safety-assert2",
+   "cc": "gcc (GCC) 14.3.0",
+   "valgrind": "valgrind-3.25.1"
+  },
+  "jobs": {
+   "ct": "success",
+   "extraction": "success",
+   "kat-memcheck": "success"
+  },
+  "job_logs": {},
+  "ok": true
+ },
+ "results": [
+  {
+   "check": "build",
+   "target": "assembly",
+   "ok": true,
+   "seconds": 66.4
+  },
+  {
+   "check": "ct",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 0.1
+  },
+  {
+   "check": "ct",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 0.1
+  },
+  {
+   "check": "ct",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 0.1
+  },
+  {
+   "check": "ct",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 0.1
+  },
+  {
+   "check": "ct",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 0.1
+  },
+  {
+   "check": "ct",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 0.1
+  },
+  {
+   "check": "extraction",
+   "target": "correctness",
+   "ok": true,
+   "seconds": 1.8
+  },
+  {
+   "check": "extraction",
+   "target": "safety",
+   "ok": true,
+   "seconds": 9.8
+  },
+  {
+   "check": "extraction",
+   "target": "unchanged",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "extracted models up to date"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "400 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa44-acvp",
+   "ok": true,
+   "seconds": 1.1,
+   "summary": "125 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "400 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa65-acvp",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "125 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "400 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa87-acvp",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "125 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "200 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "200 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "200 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "memcheck",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 2.9,
+   "summary": "ML-DSA-44 _build/jasmin_mldsa44.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 3.3,
+   "summary": "ML-DSA-65 _build/jasmin_mldsa65.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 3.6,
+   "summary": "ML-DSA-87 _build/jasmin_mldsa87.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 2.0,
+   "summary": "ML-KEM-1024 _build/jasmin_mlkem1024.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 1.5,
+   "summary": "ML-KEM-512 _build/jasmin_mlkem512.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 1.7,
+   "summary": "ML-KEM-768 _build/jasmin_mlkem768.so: ok"
+  },
+  {
+   "check": "sct",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 0.5
+  },
+  {
+   "check": "sct",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 0.5
+  },
+  {
+   "check": "sct",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 0.5
+  },
+  {
+   "check": "sct",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 0.6
+  },
+  {
+   "check": "sct",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 0.6
+  },
+  {
+   "check": "sct",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 0.6
+  }
+ ]
+}
