@@ -19,7 +19,8 @@ Output (into OUT_DIR, rebuilt on every deploy):
                              and every PR run with its run metadata (for
                              the Compare tab)
     series/proofs.json       proof time per commit (total, per top-level
-                             directory), column-wise, for the Trends tab
+                             directory) and peak memory of the run,
+                             column-wise, for the Trends tab
     series/bench-<r>.json    median and quartiles per measurement and commit,
                              column-wise, for the Trends tab
     series/checks.json       outcome (1 passed, 0 failed) per check, target
@@ -67,6 +68,18 @@ def bench_m(d):
             for r in d.get("results", [])}
 
 
+def proofs_summary(meta):
+    """a proofs record's meta -> what the index keeps (no per-file data,
+    no memory series)"""
+    s = {k: meta[k] for k in ("total_seconds", "files", "machine", "tools", "date", "run_id",
+                              "from_pr", "max_file_maxrss") if k in meta}
+    if meta.get("memory"):
+        s["memory"] = {k: meta["memory"][k] for k in
+                       ("peak_total", "peak_easycrypt", "peak_provers")
+                       if k in meta["memory"]}
+    return s
+
+
 def checks_summary(d):
     """a checks record -> its outcome, its counts per check, its run"""
     meta, by = d.get("meta", {}), {}
@@ -100,10 +113,7 @@ def main():
             continue
         meta = d.get("meta", {})
         c = entry(f.stem, meta)
-        c["proofs"] = {k: meta[k] for k in
-                       ("total_seconds", "files", "machine", "tools", "date", "run_id",
-                        "from_pr")
-                       if k in meta}
+        c["proofs"] = proofs_summary(meta)
         groups = {}
         for x in d.get("files", []):
             top = x["path"].split("/")[0]
@@ -153,6 +163,7 @@ def main():
     dump(out / "series" / "proofs.json", {
         "commits": with_proofs,
         "total": [commits[s]["proofs"].get("total_seconds") for s in with_proofs],
+        "peak": [commits[s]["proofs"].get("memory", {}).get("peak_total") for s in with_proofs],
         "groups": {d: [proofs_groups[s].get(d) for s in with_proofs] for d in dirs},
     })
     for runner, per in bench_series.items():
@@ -203,9 +214,7 @@ def main():
             if d is None:
                 continue
             meta = d.get("meta", {})
-            run(f.stem, meta)["proofs"] = {
-                k: meta[k] for k in ("total_seconds", "files", "machine", "tools", "date", "run_id")
-                if k in meta}
+            run(f.stem, meta)["proofs"] = proofs_summary(meta)
         for f in sorted(pdir.glob("checks/*.json")):
             d = load(f)
             if d is None:

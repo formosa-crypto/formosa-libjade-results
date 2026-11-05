@@ -14,7 +14,7 @@
 // Commit ids may be abbreviated. In compare links, a PR run is written
 // pr<number>:<sha>, or pr<number> for the PR's latest run.
 
-import { el, short, day, dur, minutes, cycles, kcycles, kround, delta, deltaEl } from "./util.js";
+import { el, short, day, dur, minutes, bytes, cycles, kcycles, kround, delta, deltaEl } from "./util.js";
 import { lineChart, legend, barsH } from "./chart.js";
 import { sunburst } from "./sunburst.js";
 
@@ -28,6 +28,7 @@ const NOISE = {
   proofsTotal: 0.03,                  // total time: >= 3%
   proofsDir: { pct: 0.05, abs: 10 },  // per directory: >= 5% and >= 10 s
   proofsFile: { pct: 0.10, abs: 2 },  // per file: >= 10% and >= 2 s
+  memory: { pct: 0.10, abs: 100e6 },  // peak memory (run, file): >= 10% and >= 100 MB
   bench: 0.005,                       // bench: quartiles apart and >= 0.5%
 };
 
@@ -316,6 +317,15 @@ async function timeline(params) {
     right.append(host);
     chart = lineChart(host, series, { ...common, yFormat: v => `${+v.toFixed(1)} min`, endLabels: true,
                                       height: 170, aria: "proof-checking time per directory per commit" });
+    const pm = pc.filter(([c]) => c.proofs.memory?.peak_total);
+    if (pm.length) {
+      card.append(el("h3", { text: "Peak memory of the run" }),
+        el("p", { class: "sub", text: "All the processes of the proof-checking job (EasyCrypt and its provers, " +
+          "every parallel job), sampled every second." }));
+      lineChart(card, [{ key: "peak", label: "peak", color: "var(--s7)",
+        points: pm.map(([c, i]) => ({ x: i, y: c.proofs.memory.peak_total })) }],
+        { ...common, yFormat: bytes, height: 150, aria: "peak memory of the proof-checking run per commit" });
+    }
     const tb = el("tbody");
     for (const [c] of pc.slice().reverse()) {
       tb.append(el("tr", {}, el("td", {}, el("a", { href: `#/results/${c.commit}`, class: "mono", text: short(c.commit) })),
@@ -437,20 +447,71 @@ async function commitView(c, params) {
   else {
     const card = el("div", { class: "card" });
     view.append(card);
-    const m = c.proofs.machine || {}, t = c.proofs.tools || {};
+    const m = c.proofs.machine || {}, t = c.proofs.tools || {}, mem = c.proofs.memory;
     card.append(el("h2", { text: "Proof checking" }),
       el("p", { class: "sub", text: `${c.proofs.files} files · ${dur(c.proofs.total_seconds)} cumulative · ` +
+        (mem ? `peak memory ${bytes(mem.peak_total)}, largest file ${bytes(c.proofs.max_file_maxrss || 0)} · ` : "") +
         `${m.arch || "?"}, ${m.cpus || "?"} CPUs, ${m.jobs || "?"} jobs · EasyCrypt ${short(t.easycrypt || "?")} · ${t.z3 || ""} · ${t.cvc5 || ""}` }));
     const host = el("div");
     card.append(host);
     try {
       const d = await proofsFile(c.commit);
-      sunburst(host, d.files, { zoom: params.get("zoom"), onZoom: z => setParam("zoom", z) });
+      // time or peak memory (?sb=memory), when the run has the memory of its files
+      const draw = () => {
+        host.replaceChildren();
+        sunburst(host, d.files, { zoom: parseHash().params.get("zoom"), onZoom: z => setParam("zoom", z),
+                                  memory: parseHash().params.get("sb") === "memory" });
+      };
+      if (d.files.some(f => f.maxrss != null)) {
+        const bar = el("div", { class: "row", style: "margin:4px 0 2px" }, el("span", { class: "muted", text: "Arc size:" }));
+        const btns = [["time", "time"], ["memory", "peak memory"]].map(([k, t]) => {
+          const b = el("button", { text: t });
+          b.addEventListener("click", () => { setParam("sb", k === "memory" ? "memory" : ""); mark(); draw(); });
+          return [k, b];
+        });
+        const mark = () => btns.forEach(([k, b]) => {
+          const on = (parseHash().params.get("sb") === "memory") === (k === "memory");
+          b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
+        });
+        bar.append(...btns.map(([, b]) => b), el("span", { class: "muted", style: "font-size:12px",
+          text: "Peaks do not add up: a directory shows its largest file." }));
+        host.before(bar);
+        mark();
+      }
+      draw();
+      const rss = f => f.maxrss != null ? bytes(f.maxrss) : "—";
       const rows = d.files.slice().sort((a, b) => b.seconds - a.seconds);
-      card.append(fileTable(rows.map(f => [f.path, dur(f.seconds), `${(100 * f.seconds / c.proofs.total_seconds).toFixed(2)}%`]),
-                            ["file", "time", "share"], "All files as a table"));
+      card.append(fileTable(rows.map(f => [f.path, dur(f.seconds), `${(100 * f.seconds / c.proofs.total_seconds).toFixed(2)}%`, rss(f)]),
+                            ["file", "time", "share", "peak memory"], "All files as a table"));
+      if (d.files.some(f => f.maxrss != null)) {
+        const byMem = d.files.filter(f => f.maxrss != null).sort((a, b) => b.maxrss - a.maxrss);
+        card.append(fileTable(byMem.map(f => [f.path, rss(f), dur(f.seconds)]), ["file", "peak memory", "time"],
+                              "Files by peak memory (the largest process: EasyCrypt or one of its provers)"));
+      }
+      if (d.meta?.memory?.series?.length) card.append(runMemory(d.meta.memory, d.meta.machine?.jobs));
     } catch (e) { host.append(el("div", { class: "empty", text: String(e) })); }
   }
+}
+
+// a run's memory over time: all processes, EasyCrypt, the provers
+function runMemory(mem, jobs) {
+  const wrap = el("div");
+  wrap.append(el("h3", { text: "Memory during the run" }),
+    el("p", { class: "sub", text: `Resident memory of the proof-checking job, sampled every ${mem.interval || 1} s ` +
+      `(each point the maximum of its span): peak ${bytes(mem.peak_total)}, ` +
+      `of which EasyCrypt ${bytes(mem.peak_easycrypt)} and the provers ${bytes(mem.peak_provers)} at their own peaks` +
+      (jobs ? `, with ${jobs} files checked in parallel.` : ".") }));
+  const at = i => mem.series.map(p => ({ x: p[0], y: p[i] }));
+  const series = [{ key: "total", label: "all processes", color: "var(--s7)", points: at(1) },
+                  { key: "easycrypt", label: "EasyCrypt", color: "var(--s1)", points: at(2) },
+                  { key: "provers", label: "provers", color: "var(--s2)", points: at(3) }];
+  const host = el("div");
+  let chart;
+  legend(wrap, series, () => chart.redraw());
+  wrap.append(host);
+  chart = lineChart(host, series, { xLabel: x => `${Math.round(x / 60)} min`, xTitle: x => `${dur(x)} into the run`,
+                                    yFormat: bytes, height: 170, aria: "memory of the proof-checking run over time" });
+  return wrap;
 }
 
 function fileTable(rows, head, summary, limit) {
@@ -602,6 +663,14 @@ function proofsCompare(card, fa, fb, params) {
        el("div", { class: "s muted", text: `${files(bm.size)} · ${signed(T.tb - T.ta)}` })),
     el("div", { class: "tile" }, el("div", { class: "k", text: "change on files in both" }), el("div", { class: "v" }, deltaEl(dt)),
        el("div", { class: "s muted", text: [signed(T.cb - T.ca), churn(T)].filter(Boolean).join(" · ") }))));
+  const ma = fa.meta?.memory, mb = fb.meta?.memory;
+  if (ma && mb) {
+    const sig = Math.abs(mb.peak_total - ma.peak_total) >= NOISE.memory.abs &&
+                Math.abs(mb.peak_total - ma.peak_total) / ma.peak_total >= NOISE.memory.pct;
+    card.lastChild.append(el("div", { class: "tile" }, el("div", { class: "k", text: "peak memory of the run" }),
+      el("div", { class: "v" }, deltaEl(delta(ma.peak_total, mb.peak_total, sig), null, ["less", "more"])),
+      el("div", { class: "s muted", text: `${bytes(ma.peak_total)} → ${bytes(mb.peak_total)}` })));
+  }
   const dirs = [...new Set([...am.keys(), ...bm.keys()].map(p => p.split("/")[0]))].sort();
   const drows = dirs.map(d => {
     const r = split(p => p.split("/")[0] === d);
@@ -629,6 +698,19 @@ function proofsCompare(card, fa, fb, params) {
   card.append(el("h3", { text: `Files with a change beyond noise (${changed.length} of ${rows.length})` }),
     changed.length ? fileTable(changed.map(r => r.row), ["file", "A", "B", "change"]) : el("div", { class: "muted", text: "None." }),
     fileTable(rows.map(r => r.row), ["file", "A", "B", "change"], "All files, largest absolute change first"));
+  // peak memory per file, when both runs have it
+  const ra = new Map(fa.files.filter(f => f.maxrss != null).map(f => [f.path, f.maxrss]));
+  const rb = new Map(fb.files.filter(f => f.maxrss != null).map(f => [f.path, f.maxrss]));
+  if (ra.size && rb.size) {
+    const mrows = [...rb].filter(([p]) => ra.has(p)).map(([p, y]) => {
+      const x = ra.get(p), d = y - x;
+      const sig = Math.abs(d) >= NOISE.memory.abs && Math.abs(d) / x >= NOISE.memory.pct;
+      return { d, sig, row: [p, bytes(x), bytes(y), deltaEl(delta(x, y, sig), null, ["less", "more"])] };
+    }).filter(r => r.sig).sort((u, v) => Math.abs(v.d) - Math.abs(u.d));
+    card.append(el("h3", { text: `Files whose peak memory changed beyond noise (${mrows.length})` }),
+      mrows.length ? fileTable(mrows.map(r => r.row), ["file", "A", "B", "change"])
+                   : el("div", { class: "muted", text: `None (±${NOISE.memory.pct * 100}% and ${bytes(NOISE.memory.abs)}).` }));
+  }
 }
 
 // ---------------------------------------------------------------- compare

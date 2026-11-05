@@ -7,8 +7,12 @@
 //                                        against this run (diverging blue/red)
 //   opts.zoom: "dir/sub"                 initial zoom path
 //   opts.onZoom(path)                    called on zoom (to keep it in the URL)
+//   opts.memory: true                    arc size = the file's peak memory
+//                                        (maxrss) instead of its time; peaks
+//                                        do not add up, so a directory shows
+//                                        its largest file, not the sum
 
-import { el, tip, hideTip, dur } from "./util.js";
+import { el, tip, hideTip, dur, bytes } from "./util.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (t, at = {}) => {
@@ -19,7 +23,7 @@ const svgEl = (t, at = {}) => {
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const SLOTS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"];
 
-function build(files) {
+function build(files, value) {
   const root = { name: "proofs", children: new Map() };
   for (const f of files) {
     const parts = f.path.split("/");
@@ -28,16 +32,20 @@ function build(files) {
       if (!node.children.has(d)) node.children.set(d, { name: d, children: new Map() });
       node = node.children.get(d);
     }
-    node.children.set(parts[parts.length - 1], { name: parts[parts.length - 1], seconds: f.seconds });
+    node.children.set(parts[parts.length - 1], { name: parts[parts.length - 1], seconds: value(f) });
   }
+  // `seconds` is the arc size (the time, or the peak memory); `max` the
+  // largest file below
   const freeze = (n, depth, path) => {
     n.depth = depth; n.path = path;
     if (n.children) {
       n.children = [...n.children.values()].sort((a, b) => a.name.localeCompare(b.name));
-      n.seconds = 0;
-      for (const c of n.children)
-        n.seconds += freeze(c, depth + 1, path ? path + "/" + c.name : c.name).seconds;
-    }
+      n.seconds = 0; n.max = 0;
+      for (const c of n.children) {
+        freeze(c, depth + 1, path ? path + "/" + c.name : c.name);
+        n.seconds += c.seconds; n.max = Math.max(n.max, c.max);
+      }
+    } else n.max = n.seconds;
     return n;
   };
   return freeze(root, 0, "");
@@ -57,7 +65,10 @@ function divColor(pct) {
 }
 
 export function sunburst(host, files, opts = {}) {
-  const root = build(files);
+  const mem = !!opts.memory;
+  const root = build(mem ? files.filter(f => f.maxrss != null) : files, mem ? f => f.maxrss : f => f.seconds);
+  // the value of a node: its time, or the peak of its largest file
+  const val = n => mem ? bytes(n.max) : dur(n.seconds);
   const baseMap = opts.base ? new Map(opts.base.map(f => [f.path, f.seconds])) : null;
   // Change of a slice = over its files present in both runs only: a new file
   // (or a rename) is not a speed change. New files are hatched instead, and
@@ -111,7 +122,8 @@ export function sunburst(host, files, opts = {}) {
     // file at this zoom level still fits
     RING = Math.min(64, (CX - R0 - 2) / Math.max(1, depthBelow(zoom)));
     const svg = svgEl("svg", { viewBox: `0 0 ${W} ${W}`, role: "img",
-                               "aria-label": "sunburst of proof-checking time" });
+                               "aria-label": mem ? "sunburst of the peak memory of proof checking per file"
+                                                 : "sunburst of proof-checking time" });
     if (baseMap) {   // hatching for files new in B: tone-on-tone 45° lines
       const pat = svgEl("pattern", { id: hatchId, patternUnits: "userSpaceOnUse", width: 6, height: 6,
                                      patternTransform: "rotate(45)" });
@@ -142,7 +154,8 @@ export function sunburst(host, files, opts = {}) {
         const path = svgEl("path", { d: arcPath(a0, a1, r0, r1), fill, class: "arc",
                                      stroke: surface(), "stroke-width": 1.5 });
         path.addEventListener("pointermove", ev => {
-          const rows = [{ value: dur(node.seconds), label: `${(100 * node.seconds / total).toFixed(1)}% of total` }];
+          const rows = mem ? [{ value: bytes(node.max), label: node.children ? "largest file" : "peak memory" }]
+                           : [{ value: dur(node.seconds), label: `${(100 * node.seconds / total).toFixed(1)}% of total` }];
           if (baseMap) {
             const [ca, cb] = common(node), nw = newSec(node);
             if (isNew(node)) rows.push({ value: "new", label: "not in A" });
@@ -197,7 +210,7 @@ export function sunburst(host, files, opts = {}) {
     const t1 = svgEl("text", { x: CX, y: CX - 6, class: "ct", "text-anchor": "middle" });
     t1.textContent = zoom.name;
     const t2 = svgEl("text", { x: CX, y: CX + 12, class: "cs", "text-anchor": "middle" });
-    t2.textContent = dur(zoom.seconds);
+    t2.textContent = val(zoom);
     svg.append(c, t1, t2);
     plot.appendChild(svg);
 
@@ -248,7 +261,7 @@ export function sunburst(host, files, opts = {}) {
       const it = el("span", { class: "item", tabindex: 0 });
       if (!baseMap) { const sw = el("span", { class: "sw" }); sw.style.background = famColor(f.name); it.append(sw); }
       it.append(el("span", { text: f.name, style: "flex:1" }),
-                el("span", { class: "muted num", text: `${dur(f.seconds)} · ${(100 * f.seconds / total).toFixed(0)}%` }));
+                el("span", { class: "muted num", text: mem ? val(f) : `${dur(f.seconds)} · ${(100 * f.seconds / total).toFixed(0)}%` }));
       it.addEventListener("click", () => zoomTo(f));
       lg.append(it);
     }

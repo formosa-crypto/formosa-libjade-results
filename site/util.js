@@ -51,6 +51,8 @@ export function dur(s) {
   return s.toFixed(1) + " s";
 }
 export const minutes = s => (s / 60).toFixed(s >= 600 ? 0 : 1);
+// bytes: "1.23 GB", "456 MB"
+export const bytes = b => b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : `${Math.round(b / 1e6)} MB`;
 
 // A change between a and b where lower is better. verdict: "better",
 // "worse" or "same" (within noise); rendered as icon + signed % + word.
@@ -59,9 +61,9 @@ export function delta(a, b, significant) {
   const verdict = !significant ? "same" : pct < 0 ? "better" : "worse";
   return { pct, verdict };
 }
-export function deltaEl({ pct, verdict }, abs) {
+export function deltaEl({ pct, verdict }, abs, words = ["faster", "slower"]) {
   const icon = verdict === "better" ? "▼" : verdict === "worse" ? "▲" : "≈";
-  const word = verdict === "better" ? "faster" : verdict === "worse" ? "slower" : "noise";
+  const word = verdict === "better" ? words[0] : verdict === "worse" ? words[1] : "noise";
   const sign = pct > 0 ? "+" : pct < 0 ? "−" : "±";
   const p = Math.abs(pct * 100);
   const txt = `${icon} ${sign}${p.toFixed(p < 10 ? 1 : 0)}%` +
