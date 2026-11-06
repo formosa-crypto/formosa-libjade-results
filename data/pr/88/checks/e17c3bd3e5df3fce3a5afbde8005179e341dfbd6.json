@@ -6,9 +6,9 @@
   "commit": "e17c3bd3e5df3fce3a5afbde8005179e341dfbd6",
   "commit_date": "2026-11-06T17:55:55+01:00",
   "subject": "ci: no fork code on the self-hosted runners, no forged reuse",
-  "run_id": 42268372307,
-  "run_url": "https://github.com/formosa-crypto/formosa-libjade/actions/runs/42268372307",
-  "date": "2026-11-06T18:13:33+00:00",
+  "run_id": 42271119795,
+  "run_url": "https://github.com/formosa-crypto/formosa-libjade/actions/runs/42271119795",
+  "date": "2026-11-06T18:31:43+00:00",
   "tools": {
    "jasmin": "Jasmin Compiler 2026.09.0",
    "jasmin2ec": "Jasmin Compiler 2026.09.0",
@@ -37,7 +37,7 @@
    "check": "build",
    "target": "assembly",
    "ok": true,
-   "seconds": 43.5
+   "seconds": 49.6
   },
   {
    "check": "claims",
@@ -62,7 +62,7 @@
    "check": "ct",
    "target": "mldsa87",
    "ok": true,
-   "seconds": 2.2
+   "seconds": 2.1
   },
   {
    "check": "ct",
@@ -86,7 +86,7 @@
    "check": "extraction",
    "target": "assembly",
    "ok": true,
-   "seconds": 20.0
+   "seconds": 19.9
   },
   {
    "check": "extraction",
@@ -105,7 +105,7 @@
    "check": "extraction",
    "target": "safety",
    "ok": true,
-   "seconds": 10.3
+   "seconds": 10.2
   },
   {
    "check": "extraction",
@@ -202,49 +202,49 @@
    "check": "memcheck",
    "target": "mldsa44",
    "ok": true,
-   "seconds": 1.9,
+   "seconds": 4.9,
    "summary": "ML-DSA-44 _build/jasmin_mldsa44.so: ok"
   },
   {
    "check": "memcheck",
    "target": "mldsa65",
    "ok": true,
-   "seconds": 2.1,
+   "seconds": 5.9,
    "summary": "ML-DSA-65 _build/jasmin_mldsa65.so: ok"
   },
   {
    "check": "memcheck",
    "target": "mldsa87",
    "ok": true,
-   "seconds": 2.2,
+   "seconds": 21.3,
    "summary": "ML-DSA-87 _build/jasmin_mldsa87.so: ok"
   },
   {
    "check": "memcheck",
    "target": "mlkem1024",
    "ok": true,
-   "seconds": 1.2,
+   "seconds": 9.7,
    "summary": "ML-KEM-1024 _build/jasmin_mlkem1024.so: ok"
   },
   {
    "check": "memcheck",
    "target": "mlkem512",
    "ok": true,
-   "seconds": 0.9,
+   "seconds": 4.2,
    "summary": "ML-KEM-512 _build/jasmin_mlkem512.so: ok"
   },
   {
    "check": "memcheck",
    "target": "mlkem768",
    "ok": true,
-   "seconds": 1.1,
+   "seconds": 7.2,
    "summary": "ML-KEM-768 _build/jasmin_mlkem768.so: ok"
   },
   {
    "check": "sct",
    "target": "mldsa44",
    "ok": true,
-   "seconds": 3.3
+   "seconds": 3.2
   },
   {
    "check": "sct",
@@ -256,13 +256,13 @@
    "check": "sct",
    "target": "mldsa87",
    "ok": true,
-   "seconds": 9.9
+   "seconds": 9.8
   },
   {
    "check": "sct",
    "target": "mlkem1024",
    "ok": true,
-   "seconds": 1.7
+   "seconds": 1.6
   },
   {
    "check": "sct",
