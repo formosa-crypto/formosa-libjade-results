@@ -168,6 +168,8 @@ summary { cursor: pointer; color: var(--text-secondary); font-size: 12.5px; }
 .ckhist .st.none { color: var(--muted); }
 .pf td { vertical-align: top; }
 .pf .op { white-space: nowrap; margin-right: 12px; }
+.pf .lemma { white-space: nowrap; }
+.nw { white-space: nowrap; }
 .pf .st { font-size: 12px; }
 .pf .st.ok { color: var(--better); }
 .pf .st.ko { color: var(--worse); font-weight: 700; }

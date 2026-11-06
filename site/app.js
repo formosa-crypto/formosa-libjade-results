@@ -898,7 +898,7 @@ function proofsMatrix(claims, sha, proofs) {
       tb.append(el("tr", {},
         el("td", { text: s.primitive }), el("td", { text: s.standard || "" }),
         el("td", {}, el("a", { href: blob(sha, s.spec), class: "mono", title: s.spec, text: s.spec.split("/").pop() })),
-        el("td", { text: sec ? `${sec.notion} (${(sec.parameter_sets || []).join(", ")})` : "—" }),
+        el("td", { text: sec ? sec.notion : "—" }),
         el("td", { text: sec?.assumptions?.join(", ") || "" }),
         el("td", { text: sec ? (sec.leakage ? "yes" : "no") : "" }),
         el("td", {}, sec?.theorem ? lemma(sec.theorem) : "—"),
@@ -993,7 +993,7 @@ async function checksHistory(cur) {
     const sha = s.commits[j], c = COMMITS[POS.get(sha)] || { commit: sha };
     const tr = el("tr", { class: sha === cur.commit ? "cur" : "" },
       el("td", {}, el("a", { href: `#/checks/${sha}`, class: "mono", text: short(sha) })),
-      el("td", { class: "muted", text: day(c.commit_date) }),
+      el("td", { class: "muted nw", text: day(c.commit_date) }),
       el("td", { class: "subj", title: c.subject || "", text: c.subject || "" }),
       ...groups.flatMap(g => g.cols.map((t, i) => {
         const v = cell(g, t, j);
