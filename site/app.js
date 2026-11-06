@@ -1,4 +1,4 @@
-// jasmin-nist results dashboard: timeline, commit and compare views over
+// formosa-libjade results dashboard: timeline, commit and compare views over
 // index.json (built by tools/build_index.py) and the per-commit result files.
 //
 // Routes (all in the URL fragment, so every view is a shareable link):
@@ -7,7 +7,8 @@
 //   #/compare/<a>..<b>       b against a           (?zoom=dir/sub)
 //   #/compare/<b>            b against the commit recorded just before it
 //                            (for a PR run, against its merge base on main)
-//   #/checks  or  #/checks/<sha>  one commit's checks (latest by default), and their history
+//   #/checks  or  #/checks/<sha>  one commit's checks and proofs (latest by default), and the
+//                                 history of the checks
 //   #/prs                    pull requests with recorded results
 //   #/pr/<number>            a PR run (checks; bench, proofs against its merge base) (?run=<sha>)
 // (#/commit/<sha> is kept as an alias of #/results/<sha>.)
@@ -18,7 +19,7 @@ import { el, short, day, dur, minutes, bytes, cycles, kcycles, kround, delta, de
 import { lineChart, legend, barsH } from "./chart.js";
 import { sunburst } from "./sunburst.js";
 
-const REPO = "https://github.com/strub/jasmin-nist";
+const REPO = "https://github.com/formosa-crypto/formosa-libjade";
 const view = document.getElementById("view");
 
 // Noise thresholds. Proof times come from a single run each, so a change
@@ -787,10 +788,12 @@ async function compareView(a, b, params) {
 // crosses the parameter sets with the checks of an implementation; every
 // other check (extraction, build) is listed under it.
 const CHECK_COLS = [["kat", "KAT"], ["memcheck", "Memcheck"], ["ct", "CT"], ["sct", "SCT"]];
-const CHECK_ORDER = ["kat", "memcheck", "ct", "sct", "extraction", "build"];
-const CHECK_TITLE = { ...Object.fromEntries(CHECK_COLS), extraction: "Extraction", build: "Build" };
+const CHECK_ORDER = ["kat", "memcheck", "ct", "sct", "extraction", "claims", "build"];
+const CHECK_TITLE = { ...Object.fromEntries(CHECK_COLS), extraction: "Extraction", claims: "Claims",
+                      build: "Build" };
 // the checks each job of the checks workflow records
-const JOB_CHECKS = { "ct": ["ct", "sct"], "extraction": ["extraction"], "kat-memcheck": ["build", "kat", "memcheck"] };
+const JOB_CHECKS = { "ct": ["ct", "sct"], "extraction": ["extraction", "claims"],
+                     "kat-memcheck": ["build", "kat", "memcheck"] };
 // the targets of a check in the order of the workflow (the models, then the
 // assembly); the others after them, by name
 const TARGET_ORDER = { extraction: ["correctness", "safety", "unchanged", "assembly", "assembly-unchanged"] };
@@ -862,6 +865,94 @@ function checksDetail(d) {
   return wrap;
 }
 
+// ---------------------------------------------------------------- proofs
+// The claims of a checks record (data.claims, printed by scripts/claims.py
+// of the commit): the specification of each algorithm with its security
+// theorem, and each implementation with the lemma of every operation for each
+// proved property. Links point into the commit itself, so they stay right
+// when files move. A lemma counts as checked when its file is in the proofs
+// record of the same commit (published only for a successful proofs run).
+const PROOF_COLS = [["safety", "Safety"], ["correctness", "Correctness"]];
+const blob = (sha, file, line) => `${REPO}/blob/${sha}/${file}${line ? `#L${line}` : ""}`;
+
+function proofsMatrix(claims, sha, proofs) {
+  const checked = proofs ? new Set((proofs.files || []).map(f => `proofs/${f.path}`)) : null;
+  const status = l => !checked
+    ? el("span", { class: "st none", text: "○", title: "no proofs run recorded for this commit" })
+    : checked.has(l.file)
+      ? el("span", { class: "st ok", text: "●", title: "checked by the proofs run of this commit" })
+      : el("span", { class: "st ko", text: "✗", title: "not checked by the proofs run of this commit" });
+  // a lemma: its status and a link to its declaration, labelled with the
+  // lemma's name or, in the implementation rows, with the operation
+  const lemma = (l, label) => el("span", { class: "lemma" }, status(l), " ",
+    el("a", { href: blob(sha, l.file, l.line), class: label ? "" : "mono",
+              title: `${l.lemma}\n${l.file}:${l.line}`, text: label || l.lemma }));
+  const wrap = el("div");
+
+  const specs = claims.specifications || [];
+  const ops = Object.fromEntries(specs.map(s => [s.primitive, s.operations || []]));
+  if (specs.length) {
+    const tb = el("tbody");
+    for (const s of specs) {
+      const sec = s.security;
+      tb.append(el("tr", {},
+        el("td", { text: s.primitive }), el("td", { text: s.standard || "" }),
+        el("td", {}, el("a", { href: blob(sha, s.spec), class: "mono", title: s.spec, text: s.spec.split("/").pop() })),
+        el("td", { text: sec ? `${sec.notion} (${(sec.parameter_sets || []).join(", ")})` : "—" }),
+        el("td", { text: sec?.assumptions?.join(", ") || "" }),
+        el("td", { text: sec ? (sec.leakage ? "yes" : "no") : "" }),
+        el("td", {}, sec?.theorem ? lemma(sec.theorem) : "—"),
+        el("td", {}, ...Object.entries(sec?.instances || {}).map(([set, l]) =>
+          el("span", { class: "op" }, lemma(l, set))))));
+    }
+    wrap.append(el("h3", { text: "Specifications" }), el("div", { class: "tw" }, el("table", { class: "pf" },
+      el("thead", {}, el("tr", {}, ...["algorithm", "standard", "specification", "security", "assumptions",
+        "leakage", "theorem", "instances"].map(h => el("th", { text: h })))), tb)));
+  }
+
+  const impls = (claims.implementations || []).slice().sort((a, b) =>
+    bySchemeOrder(`${a.primitive}-${a.parameter_set}`, `${b.primitive}-${b.parameter_set}`) ||
+    `${a.target}/${a.profile}`.localeCompare(`${b.target}/${b.profile}`));
+  if (impls.length) {
+    const tb = el("tbody");
+    for (const i of impls) {
+      const cells = PROOF_COLS.map(([p]) => {
+        if (!(i.claims || []).includes(p)) return el("td", { class: "muted", text: "not claimed" });
+        const byOp = i.proofs?.[p] || {};
+        return el("td", {}, ...(ops[i.primitive] || Object.keys(byOp)).map(op =>
+          el("span", { class: "op" }, byOp[op] ? lemma(byOp[op], op)
+            : el("span", { class: "st ko", text: `✗ ${op}`, title: "no lemma" }))));
+      });
+      const ps = i.provsec;
+      tb.append(el("tr", {},
+        el("td", {}, `${i.primitive}-${i.parameter_set}`, el("span", { class: "muted", text: ` · ${i.target}/${i.profile}` })),
+        ...cells,
+        el("td", {}, !ps ? el("span", { class: "muted", text: "—" })
+          : ps.theorem ? el("span", { class: "op" }, lemma(ps.theorem, ps.kind)) : ps.kind)));
+    }
+    wrap.append(el("h3", { text: "Implementations" }), el("div", { class: "tw" }, el("table", { class: "pf" },
+      el("thead", {}, el("tr", {}, el("th", { text: "implementation" }),
+        ...PROOF_COLS.map(([, h]) => el("th", { text: h })),
+        el("th", {}, el("a", { href: blob(sha, "docs/assurance.md") + "#provsec", text: "ProvSec" })))), tb)));
+  }
+  return wrap;
+}
+
+// the Proofs card of a commit or PR run: claims from its checks record,
+// statuses from its proofs record (proofs: a loader, or null without one)
+async function proofsCard(claims, sha, proofs) {
+  const card = el("div", { class: "card" }, el("h2", { text: "Proofs" }),
+    el("p", { class: "sub", text: "What the meta.toml files of the commit claim, and the EasyCrypt lemma behind each " +
+      "proved claim (checked by scripts/claims.py). ● checked by the proofs run of this commit, " +
+      "○ no proofs run recorded for it, ✗ not checked. An operation opens its lemma (its name on hover); " +
+      "a theorem is generic, its instance for a parameter set opens the clone that instantiates it; " +
+      "ProvSec opens the instance for the implementation's parameter set." }));
+  let p = null;
+  if (proofs) { try { p = await proofs(); } catch (e) { p = null; } }
+  card.append(proofsMatrix(claims, sha, p));
+  return card;
+}
+
 // The last HISTORY main commits that have a record, newest first: one row
 // per commit, one column per check and parameter set (the KAT files of a
 // set make one cell), then the other checks by target. A row opens its
@@ -927,7 +1018,8 @@ async function checksView(c) {
   view.append(head);
   head.append(el("h2", { text: "Checks" }),
     el("p", { class: "sub", text: "Known-answer tests, Valgrind's memcheck, constant time (CT) and speculative constant " +
-      "time (SCT) of every parameter set, and the extraction of the EasyCrypt models and of the assembly: the checks workflow of each commit." }));
+      "time (SCT) of every parameter set, and the extraction of the EasyCrypt models and of the assembly: the checks workflow of each commit; " +
+      "then the proofs that the implementations claim." }));
   if (!all.length) { head.append(el("div", { class: "empty", text: "No checks recorded yet: they appear after the next checks run on main." })); return; }
   const bar = el("div", { class: "row" });
   const cp = commitPicker(c, x => go(`#/checks/${x.commit}`), "commit", all);
@@ -948,8 +1040,12 @@ async function checksView(c) {
     "still be in progress, or did not run for this commit." }));
   else {
     card.append(el("p", { class: "sub" }, checksLine(c.checks)));
-    try { card.append(checksDetail(await checksFile(c.commit))); }
-    catch (e) { card.append(el("div", { class: "empty", text: String(e) })); }
+    try {
+      const d = await checksFile(c.commit);
+      card.append(checksDetail(d));
+      if (d.data?.claims)
+        view.append(await proofsCard(d.data.claims, c.commit, c.proofs ? () => proofsFile(c.commit) : null));
+    } catch (e) { card.append(el("div", { class: "empty", text: String(e) })); }
   }
   view.append(await checksHistory(c));
 }
@@ -1015,8 +1111,12 @@ async function prView(number, params) {
     ck.append(el("p", { class: "sub" }, checksLine(run.checks),
       run.checks.run_url && runAlive(run.checks.date) ? " · " : null,
       run.checks.run_url && runAlive(run.checks.date) ? el("a", { href: run.checks.run_url, text: "checks run" }) : null));
-    try { ck.append(checksDetail(await prChecksFile(pr.number, run.commit))); }
-    catch (e) { ck.append(el("div", { class: "empty", text: String(e) })); }
+    try {
+      const d = await prChecksFile(pr.number, run.commit);
+      ck.append(checksDetail(d));
+      if (d.data?.claims) view.append(await proofsCard(d.data.claims, run.commit,
+        run.proofs ? () => prProofsFile(pr.number, run.commit) : null));
+    } catch (e) { ck.append(el("div", { class: "empty", text: String(e) })); }
   }
 
   const approxNote = (base, what) => el("div", { class: "notice", text: `The merge base ${short(run.merge_base || "?")} has no recorded ` +

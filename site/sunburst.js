@@ -1,5 +1,5 @@
 // Zoomable sunburst of proof-checking time by directory (ported from
-// jasmin-nist's scripts/timing-sunburst.py).
+// formosa-libjade's scripts/timing-sunburst.py).
 //
 // sunburst(host, files, opts)
 //   files: [{ path, seconds }]           the run to draw (arc size = its time)

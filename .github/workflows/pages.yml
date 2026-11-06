@@ -1,7 +1,7 @@
 name: pages
 
 # Rebuilds the site on every push: the commit index is generated from the
-# result files under data/ (pushed by jasmin-nist's CI), then site/, data/
+# result files under data/ (pushed by formosa-libjade's CI), then site/, data/
 # and the index are deployed to GitHub Pages.
 
 on:

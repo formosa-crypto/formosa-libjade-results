@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Build the site's manifests from the result files.
 
-Input (written by jasmin-nist's CI, never edited):
+Input (written by formosa-libjade's CI, never edited):
 
     data/proofs/<commit>.json                     proofs timing, main
     data/bench/<runner>/<commit>.json             cycle benchmarks, main
     data/checks/<commit>.json                     checks (KAT, memcheck, CT,
-                                                  SCT, extraction), main
+                                                  SCT, extraction, claims), main
     data/pr/<number>/bench/<runner>/<commit>.json cycle benchmarks of a PR run
     data/pr/<number>/proofs/<commit>.json         proofs timing of a PR run
     data/pr/<number>/checks/<commit>.json         checks of a PR run
