@@ -1,0 +1,727 @@
+{
+ "meta": {
+  "repo": "strub/jasmin-nist",
+  "branch": "main",
+  "event": "push",
+  "commit": "6b17a7b4f5ed30d527536030b79c9cc3f90e2291",
+  "commit_date": "2026-11-06T17:55:34+01:00",
+  "subject": "layout: <prim>/<target>/<profile>; claims of meta.toml checked by the CI",
+  "run_id": 42256881090,
+  "run_url": "https://github.com/strub/jasmin-nist/actions/runs/42256881090",
+  "date": "2026-11-06T16:18:26+00:00",
+  "tools": {
+   "jasmin": "Jasmin Compiler 2026.09.0",
+   "jasmin2ec": "Jasmin Compiler 2026.09.0",
+   "jasmin2ec-safety": "Jasmin Compiler development version at commit 1e7479a2d8e874ca48695ffecd3452a603b425ff on branch safety-assert2",
+   "cc": "gcc (GCC) 14.3.0",
+   "valgrind": "valgrind-3.25.1"
+  },
+  "jobs": {
+   "ct": "success",
+   "extraction": "success",
+   "kat-memcheck": "success"
+  },
+  "job_logs": {},
+  "ok": true,
+  "reused": {
+   "commit": "6d13585f90077c003db3727c8d584196349da941",
+   "run_id": 42250740129
+  }
+ },
+ "results": [
+  {
+   "check": "build",
+   "target": "assembly",
+   "ok": true,
+   "seconds": 67.0
+  },
+  {
+   "check": "claims",
+   "target": "meta",
+   "ok": true,
+   "seconds": 0.0,
+   "summary": "claims: 6 implementations, every claim with its evidence"
+  },
+  {
+   "check": "ct",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 1.5
+  },
+  {
+   "check": "ct",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 1.7
+  },
+  {
+   "check": "ct",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 2.0
+  },
+  {
+   "check": "ct",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 1.3
+  },
+  {
+   "check": "ct",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 1.2
+  },
+  {
+   "check": "ct",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 1.2
+  },
+  {
+   "check": "extraction",
+   "target": "assembly",
+   "ok": true,
+   "seconds": 19.3
+  },
+  {
+   "check": "extraction",
+   "target": "assembly-unchanged",
+   "ok": true,
+   "seconds": 0.0,
+   "summary": "extracted assembly up to date"
+  },
+  {
+   "check": "extraction",
+   "target": "correctness",
+   "ok": true,
+   "seconds": 2.1
+  },
+  {
+   "check": "extraction",
+   "target": "safety",
+   "ok": true,
+   "seconds": 9.9
+  },
+  {
+   "check": "extraction",
+   "target": "unchanged",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "extracted models up to date"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "400 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa44-acvp",
+   "ok": true,
+   "seconds": 1.1,
+   "summary": "125 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "400 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa65-acvp",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "125 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 0.2,
+   "summary": "400 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mldsa87-acvp",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "125 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "200 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem1024-pqc",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "1000 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "200 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem512-pqc",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "1000 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "200 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "kat",
+   "target": "mlkem768-pqc",
+   "ok": true,
+   "seconds": 0.1,
+   "summary": "1000 passed, 0 failed, 0 file(s) skipped"
+  },
+  {
+   "check": "memcheck",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 2.9,
+   "summary": "ML-DSA-44 _build/jasmin_mldsa44.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 3.3,
+   "summary": "ML-DSA-65 _build/jasmin_mldsa65.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 3.5,
+   "summary": "ML-DSA-87 _build/jasmin_mldsa87.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 2.0,
+   "summary": "ML-KEM-1024 _build/jasmin_mlkem1024.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 1.6,
+   "summary": "ML-KEM-512 _build/jasmin_mlkem512.so: ok"
+  },
+  {
+   "check": "memcheck",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 1.7,
+   "summary": "ML-KEM-768 _build/jasmin_mlkem768.so: ok"
+  },
+  {
+   "check": "sct",
+   "target": "mldsa44",
+   "ok": true,
+   "seconds": 3.0
+  },
+  {
+   "check": "sct",
+   "target": "mldsa65",
+   "ok": true,
+   "seconds": 4.9
+  },
+  {
+   "check": "sct",
+   "target": "mldsa87",
+   "ok": true,
+   "seconds": 9.1
+  },
+  {
+   "check": "sct",
+   "target": "mlkem1024",
+   "ok": true,
+   "seconds": 1.5
+  },
+  {
+   "check": "sct",
+   "target": "mlkem512",
+   "ok": true,
+   "seconds": 1.5
+  },
+  {
+   "check": "sct",
+   "target": "mlkem768",
+   "ok": true,
+   "seconds": 1.4
+  }
+ ],
+ "data": {
+  "claims": {
+   "specifications": [
+    {
+     "primitive": "ML-DSA",
+     "standard": "FIPS 204",
+     "spec": "proofs/mldsa/spec/MLDSA.ec",
+     "operations": [
+      "keygen",
+      "sign",
+      "verify"
+     ],
+     "parameter_sets": [
+      "44",
+      "65",
+      "87"
+     ],
+     "security": {
+      "notion": "EUF-CMA, ROM, hedged signing",
+      "leakage": true,
+      "assumptions": [
+       "MLWE",
+       "SelfTargetMSIS"
+      ],
+      "parameter_sets": [
+       "44",
+       "65",
+       "87"
+      ],
+      "theorem": {
+       "file": "proofs/mldsa/spec/properties/MLDSA_Security.ec",
+       "lemma": "mldsa_secure",
+       "line": 541
+      },
+      "instances": {
+       "44": {
+        "file": "proofs/mldsa/spec/properties/Security44.ec",
+        "lemma": "Sec44.mldsa_secure",
+        "line": 7
+       },
+       "65": {
+        "file": "proofs/mldsa/spec/properties/Security65.ec",
+        "lemma": "Sec65.mldsa_secure",
+        "line": 7
+       },
+       "87": {
+        "file": "proofs/mldsa/spec/properties/Security87.ec",
+        "lemma": "Sec87.mldsa_secure",
+        "line": 7
+       }
+      }
+     }
+    },
+    {
+     "primitive": "ML-KEM",
+     "standard": "FIPS 203",
+     "spec": "proofs/mlkem/spec/MLKEM.ec",
+     "operations": [
+      "keygen",
+      "encaps",
+      "decaps"
+     ],
+     "parameter_sets": [
+      "512",
+      "768",
+      "1024"
+     ],
+     "security": {
+      "notion": "IND-CCA, ROM",
+      "leakage": false,
+      "assumptions": [
+       "MLWE",
+       "PRF",
+       "PRG",
+       "decryption-failure bound"
+      ],
+      "parameter_sets": [
+       "768",
+       "1024"
+      ],
+      "theorem": {
+       "file": "proofs/mlkem/spec/properties/MLKEMSecurity.ec",
+       "lemma": "mlkem_spec_security",
+       "line": 1710
+      },
+      "instances": {
+       "768": {
+        "file": "proofs/mlkem/spec/properties/Security768.ec",
+        "lemma": "Sec768.mlkem_spec_security",
+        "line": 6
+       },
+       "1024": {
+        "file": "proofs/mlkem/spec/properties/Security1024.ec",
+        "lemma": "Sec1024.mlkem_spec_security",
+        "line": 6
+       }
+      }
+     }
+    }
+   ],
+   "implementations": [
+    {
+     "primitive": "ML-DSA",
+     "parameter_set": "44",
+     "name": "mldsa44",
+     "target": "avx2",
+     "profile": "sct",
+     "claims": [
+      "kat",
+      "memcheck",
+      "ct",
+      "sct",
+      "safety",
+      "correctness"
+     ],
+     "proofs": {
+      "safety": {
+       "keygen": {
+        "file": "proofs/mldsa/avx2/sct/safety/44/safety44.ec",
+        "lemma": "ml_dsa_44_keygen_proof",
+        "line": 4075
+       },
+       "sign": {
+        "file": "proofs/mldsa/avx2/sct/safety/44/safety44.ec",
+        "lemma": "ml_dsa_44_sign_proof",
+        "line": 4092
+       },
+       "verify": {
+        "file": "proofs/mldsa/avx2/sct/safety/44/safety44.ec",
+        "lemma": "ml_dsa_44_verify_proof",
+        "line": 4112
+       }
+      },
+      "correctness": {
+       "keygen": {
+        "file": "proofs/mldsa/avx2/sct/correctness/44/correctness44.ec",
+        "lemma": "keygen_correct",
+        "line": 16
+       },
+       "sign": {
+        "file": "proofs/mldsa/avx2/sct/correctness/44/correctness44.ec",
+        "lemma": "sign_correct",
+        "line": 26
+       },
+       "verify": {
+        "file": "proofs/mldsa/avx2/sct/correctness/44/correctness44.ec",
+        "lemma": "verify_correct",
+        "line": 50
+       }
+      }
+     },
+     "provsec": {
+      "kind": "functional",
+      "theorem": {
+       "file": "proofs/mldsa/spec/properties/Security44.ec",
+       "lemma": "Sec44.mldsa_secure",
+       "line": 7
+      }
+     }
+    },
+    {
+     "primitive": "ML-DSA",
+     "parameter_set": "65",
+     "name": "mldsa65",
+     "target": "avx2",
+     "profile": "sct",
+     "claims": [
+      "kat",
+      "memcheck",
+      "ct",
+      "sct",
+      "safety",
+      "correctness"
+     ],
+     "proofs": {
+      "safety": {
+       "keygen": {
+        "file": "proofs/mldsa/avx2/sct/safety/65/safety65.ec",
+        "lemma": "ml_dsa_65_keygen_proof",
+        "line": 4142
+       },
+       "sign": {
+        "file": "proofs/mldsa/avx2/sct/safety/65/safety65.ec",
+        "lemma": "ml_dsa_65_sign_proof",
+        "line": 4159
+       },
+       "verify": {
+        "file": "proofs/mldsa/avx2/sct/safety/65/safety65.ec",
+        "lemma": "ml_dsa_65_verify_proof",
+        "line": 4179
+       }
+      },
+      "correctness": {
+       "keygen": {
+        "file": "proofs/mldsa/avx2/sct/correctness/65/correctness65.ec",
+        "lemma": "keygen_correct",
+        "line": 16
+       },
+       "sign": {
+        "file": "proofs/mldsa/avx2/sct/correctness/65/correctness65.ec",
+        "lemma": "sign_correct",
+        "line": 26
+       },
+       "verify": {
+        "file": "proofs/mldsa/avx2/sct/correctness/65/correctness65.ec",
+        "lemma": "verify_correct",
+        "line": 50
+       }
+      }
+     },
+     "provsec": {
+      "kind": "functional",
+      "theorem": {
+       "file": "proofs/mldsa/spec/properties/Security65.ec",
+       "lemma": "Sec65.mldsa_secure",
+       "line": 7
+      }
+     }
+    },
+    {
+     "primitive": "ML-DSA",
+     "parameter_set": "87",
+     "name": "mldsa87",
+     "target": "avx2",
+     "profile": "sct",
+     "claims": [
+      "kat",
+      "memcheck",
+      "ct",
+      "sct",
+      "safety",
+      "correctness"
+     ],
+     "proofs": {
+      "safety": {
+       "keygen": {
+        "file": "proofs/mldsa/avx2/sct/safety/87/safety87.ec",
+        "lemma": "ml_dsa_87_keygen_proof",
+        "line": 4186
+       },
+       "sign": {
+        "file": "proofs/mldsa/avx2/sct/safety/87/safety87.ec",
+        "lemma": "ml_dsa_87_sign_proof",
+        "line": 4203
+       },
+       "verify": {
+        "file": "proofs/mldsa/avx2/sct/safety/87/safety87.ec",
+        "lemma": "ml_dsa_87_verify_proof",
+        "line": 4223
+       }
+      },
+      "correctness": {
+       "keygen": {
+        "file": "proofs/mldsa/avx2/sct/correctness/87/correctness87.ec",
+        "lemma": "keygen_correct",
+        "line": 16
+       },
+       "sign": {
+        "file": "proofs/mldsa/avx2/sct/correctness/87/correctness87.ec",
+        "lemma": "sign_correct",
+        "line": 26
+       },
+       "verify": {
+        "file": "proofs/mldsa/avx2/sct/correctness/87/correctness87.ec",
+        "lemma": "verify_correct",
+        "line": 50
+       }
+      }
+     },
+     "provsec": {
+      "kind": "functional",
+      "theorem": {
+       "file": "proofs/mldsa/spec/properties/Security87.ec",
+       "lemma": "Sec87.mldsa_secure",
+       "line": 7
+      }
+     }
+    },
+    {
+     "primitive": "ML-KEM",
+     "parameter_set": "1024",
+     "name": "mlkem1024",
+     "target": "avx2",
+     "profile": "sct",
+     "claims": [
+      "kat",
+      "memcheck",
+      "ct",
+      "sct",
+      "safety",
+      "correctness"
+     ],
+     "proofs": {
+      "safety": {
+       "keygen": {
+        "file": "proofs/mlkem/avx2/sct/safety/1024/safety1024.ec",
+        "lemma": "jade_kem_mlkem_mlkem1024_amd64_avx2_keypair_derand_proof",
+        "line": 1920
+       },
+       "encaps": {
+        "file": "proofs/mlkem/avx2/sct/safety/1024/safety1024.ec",
+        "lemma": "jade_kem_mlkem_mlkem1024_amd64_avx2_enc_derand_proof",
+        "line": 1937
+       },
+       "decaps": {
+        "file": "proofs/mlkem/avx2/sct/safety/1024/safety1024.ec",
+        "lemma": "jade_kem_mlkem_mlkem1024_amd64_avx2_dec_proof",
+        "line": 1956
+       }
+      },
+      "correctness": {
+       "keygen": {
+        "file": "proofs/mlkem/avx2/sct/correctness/1024/correctness1024.ec",
+        "lemma": "keygen_correct",
+        "line": 118
+       },
+       "encaps": {
+        "file": "proofs/mlkem/avx2/sct/correctness/1024/correctness1024.ec",
+        "lemma": "encaps_correct",
+        "line": 138
+       },
+       "decaps": {
+        "file": "proofs/mlkem/avx2/sct/correctness/1024/correctness1024.ec",
+        "lemma": "decaps_correct",
+        "line": 157
+       }
+      }
+     },
+     "provsec": {
+      "kind": "functional",
+      "theorem": {
+       "file": "proofs/mlkem/spec/properties/Security1024.ec",
+       "lemma": "Sec1024.mlkem_spec_security",
+       "line": 6
+      }
+     }
+    },
+    {
+     "primitive": "ML-KEM",
+     "parameter_set": "512",
+     "name": "mlkem512",
+     "target": "avx2",
+     "profile": "sct",
+     "claims": [
+      "kat",
+      "memcheck",
+      "ct",
+      "sct",
+      "safety",
+      "correctness"
+     ],
+     "proofs": {
+      "safety": {
+       "keygen": {
+        "file": "proofs/mlkem/avx2/sct/safety/512/safety512.ec",
+        "lemma": "jade_kem_mlkem_mlkem512_amd64_avx2_keypair_derand_proof",
+        "line": 1911
+       },
+       "encaps": {
+        "file": "proofs/mlkem/avx2/sct/safety/512/safety512.ec",
+        "lemma": "jade_kem_mlkem_mlkem512_amd64_avx2_enc_derand_proof",
+        "line": 1928
+       },
+       "decaps": {
+        "file": "proofs/mlkem/avx2/sct/safety/512/safety512.ec",
+        "lemma": "jade_kem_mlkem_mlkem512_amd64_avx2_dec_proof",
+        "line": 1947
+       }
+      },
+      "correctness": {
+       "keygen": {
+        "file": "proofs/mlkem/avx2/sct/correctness/512/correctness512.ec",
+        "lemma": "keygen_correct",
+        "line": 116
+       },
+       "encaps": {
+        "file": "proofs/mlkem/avx2/sct/correctness/512/correctness512.ec",
+        "lemma": "encaps_correct",
+        "line": 135
+       },
+       "decaps": {
+        "file": "proofs/mlkem/avx2/sct/correctness/512/correctness512.ec",
+        "lemma": "decaps_correct",
+        "line": 153
+       }
+      }
+     },
+     "provsec": null
+    },
+    {
+     "primitive": "ML-KEM",
+     "parameter_set": "768",
+     "name": "mlkem768",
+     "target": "avx2",
+     "profile": "sct",
+     "claims": [
+      "kat",
+      "memcheck",
+      "ct",
+      "sct",
+      "safety",
+      "correctness"
+     ],
+     "proofs": {
+      "safety": {
+       "keygen": {
+        "file": "proofs/mlkem/avx2/sct/safety/768/safety768.ec",
+        "lemma": "jade_kem_mlkem_mlkem768_amd64_avx2_keypair_derand_proof",
+        "line": 1925
+       },
+       "encaps": {
+        "file": "proofs/mlkem/avx2/sct/safety/768/safety768.ec",
+        "lemma": "jade_kem_mlkem_mlkem768_amd64_avx2_enc_derand_proof",
+        "line": 1942
+       },
+       "decaps": {
+        "file": "proofs/mlkem/avx2/sct/safety/768/safety768.ec",
+        "lemma": "jade_kem_mlkem_mlkem768_amd64_avx2_dec_proof",
+        "line": 1961
+       }
+      },
+      "correctness": {
+       "keygen": {
+        "file": "proofs/mlkem/avx2/sct/correctness/768/correctness768.ec",
+        "lemma": "keygen_correct",
+        "line": 116
+       },
+       "encaps": {
+        "file": "proofs/mlkem/avx2/sct/correctness/768/correctness768.ec",
+        "lemma": "encaps_correct",
+        "line": 135
+       },
+       "decaps": {
+        "file": "proofs/mlkem/avx2/sct/correctness/768/correctness768.ec",
+        "lemma": "decaps_correct",
+        "line": 153
+       }
+      }
+     },
+     "provsec": {
+      "kind": "functional",
+      "theorem": {
+       "file": "proofs/mlkem/spec/properties/Security768.ec",
+       "lemma": "Sec768.mlkem_spec_security",
+       "line": 6
+      }
+     }
+    }
+   ]
+  }
+ }
+}
