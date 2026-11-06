@@ -781,7 +781,8 @@ async function compareView(a, b, params) {
 }
 
 // ---------------------------------------------------------------- checks
-// The checks records (KAT, memcheck, CT, SCT, extraction): one per main
+// The checks records (KAT, memcheck, CT, SCT, extraction of the models and
+// of the assembly): one per main
 // commit (data/checks) and per PR run (data/pr/<n>/checks). The matrix
 // crosses the parameter sets with the checks of an implementation; every
 // other check (extraction, build) is listed under it.
@@ -790,6 +791,11 @@ const CHECK_ORDER = ["kat", "memcheck", "ct", "sct", "extraction", "build"];
 const CHECK_TITLE = { ...Object.fromEntries(CHECK_COLS), extraction: "Extraction", build: "Build" };
 // the checks each job of the checks workflow records
 const JOB_CHECKS = { "ct": ["ct", "sct"], "extraction": ["extraction"], "kat-memcheck": ["build", "kat", "memcheck"] };
+// the targets of a check in the order of the workflow (the models, then the
+// assembly); the others after them, by name
+const TARGET_ORDER = { extraction: ["correctness", "safety", "unchanged", "assembly", "assembly-unchanged"] };
+const byTarget = c => (a, b) => { const o = TARGET_ORDER[c] || [];
+  return ((o.indexOf(a) + 1) || 99) - ((o.indexOf(b) + 1) || 99) || a.localeCompare(b); };
 const HISTORY = 30;
 // "mlkem512" -> "ML-KEM-512"; a target's parameter set ("mldsa65-acvp" -> "mldsa65")
 const setName = t => t.replace(/^ml(kem|dsa)(\d+)$/, (_, f, n) => `ML-${f.toUpperCase()}-${n}`);
@@ -833,7 +839,8 @@ function checksDetail(d) {
     wrap.append(el("div", { class: "tw" }, el("table", {}, el("thead", {}, el("tr", {},
       el("th", { text: "parameter set" }), ...CHECK_COLS.map(([, h]) => el("th", { text: h })))), tb)));
   }
-  const other = res.filter(r => !inMatrix(r)).sort((a, b) => byCheck(a.check, b.check));
+  const other = res.filter(r => !inMatrix(r))
+    .sort((a, b) => byCheck(a.check, b.check) || byTarget(a.check)(a.target, b.target));
   if (other.length) {
     const tb = el("tbody");
     for (const r of other) tb.append(el("tr", {}, el("td", { text: r.check }), el("td", { class: "mono", text: r.target }),
@@ -872,7 +879,7 @@ async function checksHistory(cur) {
     const matrix = CHECK_COLS.some(([k]) => k === check);
     const ts = keys.filter(([c]) => c === check).map(([, t]) => t);
     const cols = matrix ? [...new Set(ts.map(setOf).filter(Boolean))].sort(bySet)
-                        : [...new Set(ts)].sort();
+                        : [...new Set(ts)].sort(byTarget(check));
     return { check, title: CHECK_TITLE[check] || check, matrix, cols };
   });
   const colLabel = (g, t) => g.matrix ? setName(t) : t;
@@ -920,7 +927,7 @@ async function checksView(c) {
   view.append(head);
   head.append(el("h2", { text: "Checks" }),
     el("p", { class: "sub", text: "Known-answer tests, Valgrind's memcheck, constant time (CT) and speculative constant " +
-      "time (SCT) of every parameter set, and the extraction of the EasyCrypt models: the checks workflow of each commit." }));
+      "time (SCT) of every parameter set, and the extraction of the EasyCrypt models and of the assembly: the checks workflow of each commit." }));
   if (!all.length) { head.append(el("div", { class: "empty", text: "No checks recorded yet: they appear after the next checks run on main." })); return; }
   const bar = el("div", { class: "row" });
   const cp = commitPicker(c, x => go(`#/checks/${x.commit}`), "commit", all);
