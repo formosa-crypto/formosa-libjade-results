@@ -785,8 +785,8 @@ async function compareView(a, b, params) {
 // The checks records (KAT, memcheck, CT, SCT, extraction of the models and
 // of the assembly): one per main
 // commit (data/checks) and per PR run (data/pr/<n>/checks). The matrix
-// crosses the parameter sets with the checks of an implementation; every
-// other check (extraction, build) is listed under it.
+// crosses the implementations (a parameter set, or FIPS 202) with their
+// checks; every other check (extraction, build) is listed under it.
 const CHECK_COLS = [["kat", "KAT"], ["memcheck", "Memcheck"], ["ct", "CT"], ["sct", "SCT"]];
 const CHECK_ORDER = ["kat", "memcheck", "ct", "sct", "extraction", "claims", "build"];
 const CHECK_TITLE = { ...Object.fromEntries(CHECK_COLS), extraction: "Extraction", claims: "Claims",
@@ -800,9 +800,13 @@ const TARGET_ORDER = { extraction: ["correctness", "safety", "unchanged", "assem
 const byTarget = c => (a, b) => { const o = TARGET_ORDER[c] || [];
   return ((o.indexOf(a) + 1) || 99) - ((o.indexOf(b) + 1) || 99) || a.localeCompare(b); };
 const HISTORY = 30;
-// "mlkem512" -> "ML-KEM-512"; a target's parameter set ("mldsa65-acvp" -> "mldsa65")
-const setName = t => t.replace(/^ml(kem|dsa)(\d+)$/, (_, f, n) => `ML-${f.toUpperCase()}-${n}`);
-const setOf = t => (/^(ml(?:kem|dsa)\d+)(?:-.*)?$/.exec(t) || [])[1];
+// a target's implementation: its parameter set ("mldsa65-acvp" -> "mldsa65"),
+// or fips202, one implementation of every FIPS 202 function
+// ("fips202-shake128" -> "fips202"); its name ("mlkem512" -> "ML-KEM-512",
+// "fips202" -> "FIPS 202")
+const setName = t => t === "fips202" ? "FIPS 202"
+  : t.replace(/^ml(kem|dsa)(\d+)$/, (_, f, n) => `ML-${f.toUpperCase()}-${n}`);
+const setOf = t => (/^(ml(?:kem|dsa)\d+|fips202)(?:-.*)?$/.exec(t) || [])[1];
 const bySet = (a, b) => bySchemeOrder(setName(a), setName(b));
 const byCheck = (a, b) => ((CHECK_ORDER.indexOf(a) + 1) || 99) - ((CHECK_ORDER.indexOf(b) + 1) || 99) || a.localeCompare(b);
 const passedN = r => +((/(\d+) passed/.exec(r.summary || "") || [])[1] || 0);
@@ -840,7 +844,7 @@ function checksDetail(d) {
       return td;
     })));
     wrap.append(el("div", { class: "tw" }, el("table", {}, el("thead", {}, el("tr", {},
-      el("th", { text: "parameter set" }), ...CHECK_COLS.map(([, h]) => el("th", { text: h })))), tb)));
+      el("th", { text: "implementation" }), ...CHECK_COLS.map(([, h]) => el("th", { text: h })))), tb)));
   }
   const other = res.filter(r => !inMatrix(r))
     .sort((a, b) => byCheck(a.check, b.check) || byTarget(a.check)(a.target, b.target));
@@ -910,8 +914,13 @@ function proofsMatrix(claims, sha, proofs) {
         "leakage", "theorem", "instances"].map(h => el("th", { text: h })))), tb)));
   }
 
+  // an implementation of every parameter set ("all") is named by the standard
+  // of its specification: "FIPS 202 (all sets)"
+  const standard = Object.fromEntries(specs.map(s => [s.primitive, s.standard]));
+  const implName = i => i.parameter_set === "all"
+    ? `${standard[i.primitive] || i.primitive} (all sets)` : `${i.primitive}-${i.parameter_set}`;
   const impls = (claims.implementations || []).slice().sort((a, b) =>
-    bySchemeOrder(`${a.primitive}-${a.parameter_set}`, `${b.primitive}-${b.parameter_set}`) ||
+    bySchemeOrder(implName(a), implName(b)) ||
     `${a.target}/${a.profile}`.localeCompare(`${b.target}/${b.profile}`));
   if (impls.length) {
     const tb = el("tbody");
@@ -925,7 +934,7 @@ function proofsMatrix(claims, sha, proofs) {
       });
       const ps = i.provsec;
       tb.append(el("tr", {},
-        el("td", {}, `${i.primitive}-${i.parameter_set}`, el("span", { class: "muted", text: ` · ${i.target}/${i.profile}` })),
+        el("td", {}, implName(i), el("span", { class: "muted", text: ` · ${i.target}/${i.profile}` })),
         ...cells,
         el("td", {}, !ps ? el("span", { class: "muted", text: "—" })
           : ps.theorem ? el("span", { class: "op" }, lemma(ps.theorem, ps.kind)) : ps.kind)));
@@ -954,9 +963,9 @@ async function proofsCard(claims, sha, proofs) {
 }
 
 // The last HISTORY main commits that have a record, newest first: one row
-// per commit, one column per check and parameter set (the KAT files of a
-// set make one cell), then the other checks by target. A row opens its
-// commit.
+// per commit, one column per check and implementation (the KAT files of an
+// implementation make one cell), then the other checks by target. A row opens
+// its commit.
 async function checksHistory(cur) {
   const card = el("div", { class: "card" }, el("h2", { text: "History" }),
     el("p", { class: "sub", text: `The last ${HISTORY} commits of main that have checks, newest first. ` +
@@ -965,7 +974,7 @@ async function checksHistory(cur) {
   try { s = await checksSeries(); }
   catch (e) { card.append(el("div", { class: "empty", text: String(e) })); return card; }
   const keys = Object.keys(s.r).map(k => k.split("|"));
-  // the columns: per check, its parameter sets (matrix checks) or targets
+  // the columns: per check, its implementations (matrix checks) or targets
   const groups = [...new Set(keys.map(([c]) => c))].sort(byCheck).map(check => {
     const matrix = CHECK_COLS.some(([k]) => k === check);
     const ts = keys.filter(([c]) => c === check).map(([, t]) => t);
@@ -1018,7 +1027,7 @@ async function checksView(c) {
   view.append(head);
   head.append(el("h2", { text: "Checks" }),
     el("p", { class: "sub", text: "Known-answer tests, Valgrind's memcheck, constant time (CT) and speculative constant " +
-      "time (SCT) of every parameter set, and the extraction of the EasyCrypt models and of the assembly: the checks workflow of each commit; " +
+      "time (SCT) of every implementation, and the extraction of the EasyCrypt models and of the assembly: the checks workflow of each commit; " +
       "then the proofs that the implementations claim." }));
   if (!all.length) { head.append(el("div", { class: "empty", text: "No checks recorded yet: they appear after the next checks run on main." })); return; }
   const bar = el("div", { class: "row" });
